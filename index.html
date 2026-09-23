@@ -31,24 +31,33 @@
     </iframe>
 
     <script>
-        // Terima sinyal resize dari dalam iframe GAS -> paksa browser recalc touch regions
+        // Tangani sinyal resize dari dalam iframe GAS
         window.addEventListener('message', function(e){
             try {
                 if(!e.data || e.data.type !== 'gas-resize') return;
                 var f = document.getElementById('gasFrame');
                 if(!f) return;
-                // Force reflow pada iframe container
+                // Toggle transform pada iframe (memaksa iOS recalc touch regions)
+                f.style.transform = 'translateZ(0)';
                 void f.offsetHeight;
-                // Trigger resize event (fix bug iOS "harus rotate dulu")
-                window.dispatchEvent(new Event('resize'));
+                requestAnimationFrame(function(){
+                    try { f.style.transform = ''; } catch(err){}
+                });
+                // Dispatch resize di parent
+                try { window.dispatchEvent(new Event('resize')); } catch(err){}
             } catch(err){}
         });
 
-        // Recalc juga saat orientasi berubah
+        // Recalc saat orientasi berubah
         window.addEventListener('orientationchange', function(){
-            setTimeout(function(){ window.dispatchEvent(new Event('resize')); }, 100);
-            setTimeout(function(){ window.dispatchEvent(new Event('resize')); }, 400);
+            setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 100);
+            setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 400);
+            setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 800);
         });
+
+        // Recalc awal saat load
+        setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 300);
+        setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 1000);
     </script>
 
 </body>
