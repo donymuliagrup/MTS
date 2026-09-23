@@ -2,33 +2,54 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Web Application</title>
     <style>
-        /* Mengatur agar halaman dan iframe memenuhi layar tanpa scrollbar ganda */
         html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
             overflow: hidden;
             background-color: #ffffff;
+            -webkit-text-size-adjust: 100%;
         }
-        iframe {
-            width: 100%;
-            height: 100%;
+        #gasFrame {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
             border: none;
             display: block;
+            background: #eef2f7;
         }
     </style>
 </head>
 <body>
 
     <iframe 
+        id="gasFrame"
         src="https://script.google.com/macros/s/AKfycbz6ll2nnIKoe-5R50rs1thq2TTqqni-jM3ZaSIfj5RkqCICTLJ8Zt9gjVIlGDPuGjG48A/exec" 
-        allow="geolocation; camera; microphone"
-        loading="lazy">
+        allow="geolocation; camera; microphone">
     </iframe>
+
+    <script>
+        // Terima sinyal resize dari dalam iframe GAS -> paksa browser recalc touch regions
+        window.addEventListener('message', function(e){
+            try {
+                if(!e.data || e.data.type !== 'gas-resize') return;
+                var f = document.getElementById('gasFrame');
+                if(!f) return;
+                // Force reflow pada iframe container
+                void f.offsetHeight;
+                // Trigger resize event (fix bug iOS "harus rotate dulu")
+                window.dispatchEvent(new Event('resize'));
+            } catch(err){}
+        });
+
+        // Recalc juga saat orientasi berubah
+        window.addEventListener('orientationchange', function(){
+            setTimeout(function(){ window.dispatchEvent(new Event('resize')); }, 100);
+            setTimeout(function(){ window.dispatchEvent(new Event('resize')); }, 400);
+        });
+    </script>
 
 </body>
 </html>
