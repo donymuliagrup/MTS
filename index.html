@@ -2,64 +2,43 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Web Application</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Mulia Trucking — Loading...</title>
+    <meta http-equiv="refresh" content="0; url=https://script.google.com/macros/s/AKfycbz6ll2nnIKoe-5R50rs1thq2TTqqni-jM3ZaSIfj5RkqCICTLJ8Zt9gjVIlGDPuGjG48A/exec">
     <style>
         html, body {
             margin: 0; padding: 0;
             width: 100%; height: 100%;
-            overflow: hidden;
-            background-color: #ffffff;
-            -webkit-text-size-adjust: 100%;
+            background: linear-gradient(135deg, #1f4e79, #2f7fbf);
+            display: flex; align-items: center; justify-content: center;
+            font-family: -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+            color: #fff;
         }
-        #gasFrame {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            width: 100%; height: 100%;
-            border: none;
-            display: block;
-            background: #eef2f7;
+        .loader {
+            text-align: center;
         }
+        .spinner {
+            width: 40px; height: 40px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .txt { font-size: 14px; opacity: .9; }
     </style>
 </head>
 <body>
-
-    <iframe 
-        id="gasFrame"
-        src="https://script.google.com/macros/s/AKfycbz6ll2nnIKoe-5R50rs1thq2TTqqni-jM3ZaSIfj5RkqCICTLJ8Zt9gjVIlGDPuGjG48A/exec" 
-        style="width:100%;height:100dvh;border:0;display:block"
-        allow="geolocation; camera; microphone">
-    </iframe>
-
+    <div class="loader">
+        <div class="spinner"></div>
+        <div class="txt">Mengalihkan ke aplikasi...</div>
+    </div>
     <script>
-        // Tangani sinyal resize dari dalam iframe GAS
-        window.addEventListener('message', function(e){
-            try {
-                if(!e.data || e.data.type !== 'gas-resize') return;
-                var f = document.getElementById('gasFrame');
-                if(!f) return;
-                // Toggle transform pada iframe (memaksa iOS recalc touch regions)
-                f.style.transform = 'translateZ(0)';
-                void f.offsetHeight;
-                requestAnimationFrame(function(){
-                    try { f.style.transform = ''; } catch(err){}
-                });
-                // Dispatch resize di parent
-                try { window.dispatchEvent(new Event('resize')); } catch(err){}
-            } catch(err){}
-        });
-
-        // Recalc saat orientasi berubah
-        window.addEventListener('orientationchange', function(){
-            setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 100);
-            setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 400);
-            setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 800);
-        });
-
-        // Recalc awal saat load
-        setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 300);
-        setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 1000);
+        // Redirect segera — pakai replace() supaya tidak masuk history
+        window.location.replace(
+            'https://script.google.com/macros/s/AKfycbz6ll2nnIKoe-5R50rs1thq2TTqqni-jM3ZaSIfj5RkqCICTLJ8Zt9gjVIlGDPuGjG48A/exec'
+        );
     </script>
-
 </body>
 </html>
