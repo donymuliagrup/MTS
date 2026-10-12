@@ -60,7 +60,6 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
 
 <div id="busyOverlay"><div id="busyBox"><div class="spin"></div><div class="txt">Memproses...</div></div></div>
 
-<!-- Hidden form + iframe untuk login POST ke GAS -->
 <form id="bridgeForm" action="https://script.google.com/macros/s/AKfycbz6ll2nnIKoe-5R50rs1thq2TTqqni-jM3ZaSIfj5RkqCICTLJ8Zt9gjVIlGDPuGjG48A/exec" method="POST" target="bridgeFrame" style="display:none">
   <input type="hidden" name="action" value="loginBridge">
   <input type="hidden" name="kode" id="bfKode" value="">
@@ -74,7 +73,7 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
 
   var GAS_URL = 'https://script.google.com/macros/s/AKfycbz6ll2nnIKoe-5R50rs1thq2TTqqni-jM3ZaSIfj5RkqCICTLJ8Zt9gjVIlGDPuGjG48A/exec';
   var LS_KEY = 'mts_session_v1';
-  var TOKEN_TTL_MS = 6 * 60 * 60 * 1000;   // 6 jam (samakan dengan server: 21600 s)
+  var TOKEN_TTL_MS = 6 * 60 * 60 * 1000;
 
   var $ = function(id){ return document.getElementById(id); };
   var loginWrap = $('loginWrap');
@@ -93,29 +92,16 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
 
   var _pendingLogin = false;
   var _currentToken = null;
+  var _pendingTokenForIframe = null;   // v63f: token yg nunggu iframe ready
+  var _iframeReady = false;
 
-  function showBusy(txt){
-    busyTxt.textContent = txt || 'Memproses...';
-    busyOverlay.classList.add('show');
-  }
-  function hideBusy(){
-    busyOverlay.classList.remove('show');
-  }
-  function showErr(msg){
-    loginErr.textContent = msg;
-    loginErr.classList.add('show');
-  }
-  function clearErr(){
-    loginErr.classList.remove('show');
-    loginErr.textContent = '';
-  }
+  function showBusy(txt){ busyTxt.textContent = txt || 'Memproses...'; busyOverlay.classList.add('show'); }
+  function hideBusy(){ busyOverlay.classList.remove('show'); }
+  function showErr(msg){ loginErr.textContent = msg; loginErr.classList.add('show'); }
+  function clearErr(){ loginErr.classList.remove('show'); loginErr.textContent = ''; }
 
   function saveSession(token, user){
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify({
-        token: token, user: user, ts: Date.now()
-      }));
-    } catch(e){}
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ token: token, user: user, ts: Date.now() })); } catch(e){}
   }
   function loadSession(){
     try {
@@ -127,25 +113,14 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
       return obj;
     } catch(e){ return null; }
   }
-  function clearSession(){
-    try { localStorage.removeItem(LS_KEY); } catch(e){}
-  }
+  function clearSession(){ try { localStorage.removeItem(LS_KEY); } catch(e){} }
 
-  // ===== Credential Management API (Chrome/Edge) =====
   function trySavePassword(username, password){
     try {
       if(!window.PasswordCredential) return;
       if(!navigator.credentials || !navigator.credentials.store) return;
-      var cred = new window.PasswordCredential({
-        id: username,
-        password: password,
-        name: username
-      });
-      navigator.credentials.store(cred).then(function(){
-        console.log('[MTS] Password saved to Credential Manager');
-      }).catch(function(e){
-        console.warn('[MTS] Credential store failed:', e);
-      });
+      var cred = new window.PasswordCredential({ id: username, password: password, name: username });
+      navigator.credentials.store(cred).catch(function(){});
     } catch(e){}
   }
   function tryGetSavedPassword(){
@@ -153,59 +128,66 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
       if(!window.PasswordCredential) return Promise.resolve(null);
       if(!navigator.credentials || !navigator.credentials.get) return Promise.resolve(null);
       return navigator.credentials.get({ password: true, mediation: 'silent' })
-        .then(function(cred){
-          if(cred && cred.id && cred.password) return cred;
-          return null;
-        })
+        .then(function(cred){ return (cred && cred.id) ? cred : null; })
         .catch(function(){ return null; });
     } catch(e){ return Promise.resolve(null); }
   }
 
-  // ===== Buka aplikasi (kirim token ke iframe GAS) =====
+  // v63f: Kirim token ke GAS iframe — pakai relay pattern
   function sendTokenToIframe(token, user){
     var msg = { type: 'gas-login-result', ok: true, data: { token: token, user: user } };
-    try { gasFrame.contentWindow.postMessage(msg, '*'); } catch(e){}
+    // Jika iframe sudah konfirmasi ready, kirim sekarang
+    if(_iframeReady){
+      try { gasFrame.contentWindow.postMessage(msg, '*'); } catch(e){}
+    }
+    // Simpan juga untuk dikirim saat iframe ready
+    _pendingTokenForIframe = msg;
   }
 
   function openApp(token, user){
     loginWrap.style.display = 'none';
     appWrap.classList.add('show');
     _currentToken = token;
+    _iframeReady = false;
 
     var needLoad = !gasFrame.src || gasFrame.src === 'about:blank' || gasFrame.src === window.location.href;
 
     if(needLoad){
-      // Set onload dulu sebelum set src
-      gasFrame.onload = function(){
-        sendTokenToIframe(token, user);
-        setTimeout(function(){ sendTokenToIframe(token, user); }, 250);
-        setTimeout(function(){ sendTokenToIframe(token, user); }, 900);
-      };
+      // Jangan set onload — kita pakai relay pattern via gas-ready message
+      _pendingTokenForIframe = { type: 'gas-login-result', ok: true, data: { token: token, user: user } };
       gasFrame.src = GAS_URL + '?bridge=1';
     } else {
       sendTokenToIframe(token, user);
-      setTimeout(function(){ sendTokenToIframe(token, user); }, 250);
-      setTimeout(function(){ sendTokenToIframe(token, user); }, 900);
     }
   }
 
   function backToLogin(errMsg){
     appWrap.classList.remove('show');
     loginWrap.style.display = '';
-    // Force reload iframe pada login berikutnya
-    gasFrame.removeAttribute('onload');
+    gasFrame.removeAttribute('src');
     gasFrame.src = 'about:blank';
     _currentToken = null;
+    _iframeReady = false;
+    _pendingTokenForIframe = null;
     clearSession();
     if(errMsg) showErr(errMsg); else clearErr();
     hideBusy();
     btnLogin.disabled = false;
   }
 
-  // ===== Terima postMessage dari GAS (login result / logout / expired) =====
+  // ===== Terima pesan dari GAS (login result / logout / ready) =====
   window.addEventListener('message', function(ev){
     var msg = ev.data;
     if(!msg || typeof msg !== 'object') return;
+
+    // v63f: GAS iframe siap — kirim token yg tertunda
+    if(msg.type === 'gas-ready' && msg.source === 'gas-bridge'){
+      _iframeReady = true;
+      if(_pendingTokenForIframe){
+        try { ev.source.postMessage(_pendingTokenForIframe, '*'); } catch(e){}
+      }
+      return;
+    }
 
     if(msg.type === 'gas-login-result' && _pendingLogin){
       _pendingLogin = false;
@@ -214,9 +196,7 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
         var t = msg.data.token;
         var u = msg.data.user;
         saveSession(t, u);
-        // Simpan ke Credential Manager
         trySavePassword(inpKode.value.trim(), inpPass.value);
-        // Kosongkan password field (best practice)
         inpPass.value = '';
         openApp(t, u);
       } else {
@@ -228,6 +208,8 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
       }
       return;
     }
+
+    if(msg.type === 'gas-login-success'){ return; }
 
     if(msg.type === 'gas-logout' || msg.type === 'gas-session-expired'){
       backToLogin('Sesi berakhir. Silakan login kembali.');
@@ -249,9 +231,8 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
     showBusy('Memverifikasi...');
     bfKode.value = kode;
     bfPass.value = pass;
-    try {
-      bridgeForm.submit();
-    } catch(err){
+    try { bridgeForm.submit(); }
+    catch(err){
       _pendingLogin = false;
       btnLogin.disabled = false;
       hideBusy();
@@ -273,7 +254,6 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
     if(cred && cred.id){
       inpKode.value = cred.id;
       if(cred.password) inpPass.value = cred.password;
-      // Fokus ke tombol MASUK kalau sudah terisi
       try { btnLogin.focus(); } catch(e){}
     }
   });
@@ -283,7 +263,6 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
     var sess = loadSession();
     if(sess){
       showBusy('Memuat aplikasi...');
-      // Beri sedikit jeda supaya Credential get selesai dulu
       setTimeout(function(){
         hideBusy();
         openApp(sess.token, sess.user);
