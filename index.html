@@ -1,279 +1,63 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#1f4e79">
-<title>Mulia Trucking — Login</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;width:100%;overflow:hidden;background:#eef2f7;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#1b2430;font-size:14px;-webkit-text-size-adjust:100%;text-size-adjust:100%}
-#loginWrap{position:fixed;inset:0;background:linear-gradient(135deg,#1f4e79,#2f7fbf);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch;z-index:10}
-.card{background:#fff;border-radius:14px;padding:26px 22px;width:100%;max-width:420px;box-shadow:0 12px 40px rgba(0,0,0,.25);margin:auto 0}
-.card h1{font-size:18px;text-align:center;margin-bottom:4px;color:#1f4e79;letter-spacing:.3px}
-.card .sub{text-align:center;font-size:12px;color:#7b8794;margin-bottom:20px}
-.fg{margin-bottom:12px}
-label{display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#4a5968}
-input{width:100%;padding:9px 10px;border:1px solid #c6d0dd;border-radius:6px;font-family:inherit;font-size:14px;background:#fff;-webkit-appearance:none;appearance:none}
-input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,121,.1)}
-.btn{padding:8px 14px;background:#e3e9f2;color:#1b2430;border:none;border-radius:6px;font-family:inherit;font-size:13px;cursor:pointer;transition:transform .06s;touch-action:manipulation}
-.btn:active{transform:scale(.97)}
-.btn.primary{background:#1f4e79;color:#fff}
-.btn[disabled]{opacity:.55;cursor:not-allowed}
-.err{background:#fdeaea;color:#c0392b;font-size:12.5px;padding:10px 12px;border-radius:6px;margin-bottom:12px;display:none;border-left:4px solid #c0392b}
-.err.show{display:block}
-#appWrap{position:fixed;inset:0;display:none;background:#eef2f7}
-#appWrap.show{display:block}
-#gasFrame{width:100%;height:100%;border:0;display:block;background:#eef2f7}
-#busyOverlay{position:fixed;inset:0;background:rgba(15,25,40,.55);display:none;align-items:center;justify-content:center;z-index:9998}
-#busyOverlay.show{display:flex}
-#busyBox{background:#fff;padding:22px 30px;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center;min-width:180px}
-#busyBox .spin{width:26px;height:26px;border:3px solid #dbe4ee;border-top-color:#1f4e79;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
-@keyframes spin{to{transform:rotate(360deg)}}
-#busyBox .txt{font-weight:600;color:#1f4e79;font-size:13px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Web Application</title>
+    <style>
+        html, body {
+            margin: 0; padding: 0;
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background-color: #ffffff;
+            -webkit-text-size-adjust: 100%;
+        }
+        #gasFrame {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100%; height: 100%;
+            border: none;
+            display: block;
+            background: #eef2f7;
+        }
+    </style>
 </head>
 <body>
 
-<div id="loginWrap">
-  <div class="card">
-    <h1>Mulia Trucking</h1>
-    <div class="sub">TRUCKING MANAGEMENT SYSTEM</div>
-    <form id="loginForm" autocomplete="on" novalidate>
-      <div class="err" id="loginErr"></div>
-      <div class="fg">
-        <label for="inpKode">Nama Akun</label>
-        <input id="inpKode" name="username" type="text" autocomplete="username" placeholder="Masukkan nama akun atau kode akun" autocapitalize="off" autocorrect="off" spellcheck="false" required>
-      </div>
-      <div class="fg">
-        <label for="inpPass">Password</label>
-        <input id="inpPass" name="password" type="password" autocomplete="current-password" required>
-      </div>
-      <button type="submit" class="btn primary" id="btnLogin" style="width:100%;padding:12px;font-size:14px">MASUK</button>
-    </form>
-  </div>
-</div>
+    <iframe 
+        id="gasFrame"
+        src="https://script.google.com/macros/s/AKfycbz6ll2nnIKoe-5R50rs1thq2TTqqni-jM3ZaSIfj5RkqCICTLJ8Zt9gjVIlGDPuGjG48A/exec" 
+        style="width:100%;height:100%;border:0;display:block"
+        allow="geolocation; camera; microphone">
+    </iframe>
 
-<div id="appWrap">
-  <iframe id="gasFrame" name="gasBridgeFrame" allow="geolocation; camera; microphone"></iframe>
-</div>
+    <script>
+        // Tangani sinyal resize dari dalam iframe GAS
+        window.addEventListener('message', function(e){
+            try {
+                if(!e.data || e.data.type !== 'gas-resize') return;
+                var f = document.getElementById('gasFrame');
+                if(!f) return;
+                f.style.transform = 'translateZ(0)';
+                void f.offsetHeight;
+                requestAnimationFrame(function(){
+                    try { f.style.transform = ''; } catch(err){}
+                });
+                try { window.dispatchEvent(new Event('resize')); } catch(err){}
+            } catch(err){}
+        });
 
-<div id="busyOverlay"><div id="busyBox"><div class="spin"></div><div class="txt">Memproses...</div></div></div>
+        // Recalc saat orientasi berubah
+        window.addEventListener('orientationchange', function(){
+            setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 100);
+            setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 400);
+            setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 800);
+        });
 
-<form id="bridgeForm" action="https://script.google.com/macros/s/AKfycbz6ll2nnIKoe-5R50rs1thq2TTqqni-jM3ZaSIfj5RkqCICTLJ8Zt9gjVIlGDPuGjG48A/exec" method="POST" target="bridgeFrame" style="display:none">
-  <input type="hidden" name="action" value="loginBridge">
-  <input type="hidden" name="kode" id="bfKode" value="">
-  <input type="hidden" name="password" id="bfPass" value="">
-</form>
-<iframe name="bridgeFrame" id="bridgeFrame" style="position:absolute;width:0;height:0;border:0;left:-9999px" title="bridge"></iframe>
-
-<script>
-(function(){
-  'use strict';
-
-  var GAS_URL = 'https://script.google.com/macros/s/AKfycbz6ll2nnIKoe-5R50rs1thq2TTqqni-jM3ZaSIfj5RkqCICTLJ8Zt9gjVIlGDPuGjG48A/exec';
-  var LS_KEY = 'mts_session_v1';
-  var TOKEN_TTL_MS = 6 * 60 * 60 * 1000;
-
-  var $ = function(id){ return document.getElementById(id); };
-  var loginWrap = $('loginWrap');
-  var appWrap = $('appWrap');
-  var gasFrame = $('gasFrame');
-  var busyOverlay = $('busyOverlay');
-  var busyTxt = busyOverlay.querySelector('.txt');
-  var loginForm = $('loginForm');
-  var inpKode = $('inpKode');
-  var inpPass = $('inpPass');
-  var btnLogin = $('btnLogin');
-  var loginErr = $('loginErr');
-  var bridgeForm = $('bridgeForm');
-  var bfKode = $('bfKode');
-  var bfPass = $('bfPass');
-
-  var _pendingLogin = false;
-  var _currentToken = null;
-  var _pendingTokenForIframe = null;
-  var _iframeReady = false;
-
-  function showBusy(txt){ busyTxt.textContent = txt || 'Memproses...'; busyOverlay.classList.add('show'); }
-  function hideBusy(){ busyOverlay.classList.remove('show'); }
-  function showErr(msg){ loginErr.textContent = msg; loginErr.classList.add('show'); }
-  function clearErr(){ loginErr.classList.remove('show'); loginErr.textContent = ''; }
-
-  function saveSession(token, user){
-    try { localStorage.setItem(LS_KEY, JSON.stringify({ token: token, user: user, ts: Date.now() })); } catch(e){}
-  }
-  function loadSession(){
-    try {
-      var raw = localStorage.getItem(LS_KEY);
-      if(!raw) return null;
-      var obj = JSON.parse(raw);
-      if(!obj || !obj.token || !obj.user) return null;
-      if(Date.now() - (obj.ts || 0) > TOKEN_TTL_MS) return null;
-      return obj;
-    } catch(e){ return null; }
-  }
-  function clearSession(){ try { localStorage.removeItem(LS_KEY); } catch(e){} }
-
-  function trySavePassword(username, password){
-    try {
-      if(!window.PasswordCredential) return;
-      if(!navigator.credentials || !navigator.credentials.store) return;
-      var cred = new window.PasswordCredential({ id: username, password: password, name: username });
-      navigator.credentials.store(cred).catch(function(){});
-    } catch(e){}
-  }
-  function tryGetSavedPassword(){
-    try {
-      if(!window.PasswordCredential) return Promise.resolve(null);
-      if(!navigator.credentials || !navigator.credentials.get) return Promise.resolve(null);
-      return navigator.credentials.get({ password: true, mediation: 'silent' })
-        .then(function(cred){ return (cred && cred.id) ? cred : null; })
-        .catch(function(){ return null; });
-    } catch(e){ return Promise.resolve(null); }
-  }
-
-  function openApp(token, user){
-    loginWrap.style.display = 'none';
-    appWrap.classList.add('show');
-    _currentToken = token;
-    _iframeReady = false;
-
-    var needLoad = !gasFrame.src || gasFrame.src === 'about:blank';
-    _pendingTokenForIframe = { type: 'gas-login-result', ok: true, data: { token: token, user: user } };
-
-    if(needLoad){
-      gasFrame.src = GAS_URL + '?bridge=1';
-    } else {
-      // Iframe sudah dimuat sebelumnya (misal refresh) — langsung coba kirim
-      try {
-        var win = gasFrame.contentWindow;
-        if(win) win.postMessage(_pendingTokenForIframe, '*');
-      } catch(e){}
-    }
-  }
-
-  function backToLogin(errMsg){
-    appWrap.classList.remove('show');
-    loginWrap.style.display = '';
-    try { gasFrame.src = 'about:blank'; } catch(e){}
-    _currentToken = null;
-    _iframeReady = false;
-    _pendingTokenForIframe = null;
-    clearSession();
-    if(errMsg) showErr(errMsg); else clearErr();
-    hideBusy();
-    btnLogin.disabled = false;
-  }
-
-  // ===== Relay Pattern: terima pesan dari GAS iframe =====
-  window.addEventListener('message', function(ev){
-    var msg = ev.data;
-    if(!msg || typeof msg !== 'object') return;
-
-    console.log('[Bridge] received:', msg.type, msg);
-
-    // GAS iframe siap — kirim token yang tertunda
-    if(msg.type === 'gas-ready' && msg.source === 'gas-bridge'){
-      _iframeReady = true;
-      if(_pendingTokenForIframe){
-        try {
-          if(ev.source && ev.source.postMessage){
-            ev.source.postMessage(_pendingTokenForIframe, '*');
-            console.log('[Bridge] token sent via event.source');
-          } else {
-            try { gasFrame.contentWindow.postMessage(_pendingTokenForIframe, '*'); } catch(e){}
-          }
-        } catch(e){ console.error('[Bridge] send token failed:', e); }
-      }
-      return;
-    }
-
-    if(msg.type === 'gas-login-result' && _pendingLogin){
-      _pendingLogin = false;
-      hideBusy();
-      if(msg.ok && msg.data && msg.data.token && msg.data.user){
-        var t = msg.data.token;
-        var u = msg.data.user;
-        console.log('[Bridge] login success, opening app');
-        saveSession(t, u);
-        trySavePassword(inpKode.value.trim(), inpPass.value);
-        inpPass.value = '';
-        openApp(t, u);
-      } else {
-        var errText = (msg.data && msg.data.error) ? msg.data.error : 'Login gagal. Coba lagi.';
-        showErr(errText);
-        inpPass.value = '';
-        inpPass.focus();
-        btnLogin.disabled = false;
-      }
-      return;
-    }
-
-    if(msg.type === 'gas-login-success'){ console.log('[Bridge] gas acknowledged login'); return; }
-
-    if(msg.type === 'gas-logout' || msg.type === 'gas-session-expired'){
-      backToLogin('Sesi berakhir. Silakan login kembali.');
-      return;
-    }
-  });
-
-  // ===== Submit form login =====
-  loginForm.addEventListener('submit', function(e){
-    e.preventDefault();
-    if(_pendingLogin) return;
-    var kode = (inpKode.value || '').trim();
-    var pass = inpPass.value || '';
-    if(!kode){ showErr('Nama akun wajib diisi.'); inpKode.focus(); return; }
-    if(!pass){ showErr('Password wajib diisi.'); inpPass.focus(); return; }
-    clearErr();
-    _pendingLogin = true;
-    btnLogin.disabled = true;
-    showBusy('Memverifikasi...');
-    bfKode.value = kode;
-    bfPass.value = pass;
-    try { bridgeForm.submit(); }
-    catch(err){
-      _pendingLogin = false;
-      btnLogin.disabled = false;
-      hideBusy();
-      showErr('Gagal menghubungi server: ' + (err.message || err));
-      return;
-    }
-    setTimeout(function(){
-      if(_pendingLogin){
-        _pendingLogin = false;
-        btnLogin.disabled = false;
-        hideBusy();
-        showErr('Koneksi timeout. Periksa jaringan lalu coba lagi.');
-      }
-    }, 25000);
-  });
-
-  // ===== Autofill dari Credential Manager =====
-  tryGetSavedPassword().then(function(cred){
-    if(cred && cred.id){
-      inpKode.value = cred.id;
-      if(cred.password) inpPass.value = cred.password;
-      try { btnLogin.focus(); } catch(e){}
-    }
-  });
-
-  // ===== Autologin dari localStorage =====
-  (function(){
-    var sess = loadSession();
-    if(sess){
-      console.log('[Bridge] autologin from localStorage');
-      showBusy('Memuat aplikasi...');
-      setTimeout(function(){
-        hideBusy();
-        openApp(sess.token, sess.user);
-      }, 300);
-    }
-  })();
-
-})();
-</script>
+        // Recalc awal saat load
+        setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 300);
+        setTimeout(function(){ try { window.dispatchEvent(new Event('resize')); } catch(e){} }, 1000);
+    </script>
 
 </body>
 </html>
