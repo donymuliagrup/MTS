@@ -8,7 +8,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;width:100%;overflow:hidden;background:#eef2f7;font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#1b2430;font-size:14px;-webkit-text-size-adjust:100%;text-size-adjust:100%}
-#loginWrap{position:fixed;inset:0;background:linear-gradient(135deg,#1f4e79,#2f7fbf);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#loginWrap{position:fixed;inset:0;background:linear-gradient(135deg,#1f4e79,#2f7fbf);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;-webkit-overflow-scrolling:touch;z-index:10}
 .card{background:#fff;border-radius:14px;padding:26px 22px;width:100%;max-width:420px;box-shadow:0 12px 40px rgba(0,0,0,.25);margin:auto 0}
 .card h1{font-size:18px;text-align:center;margin-bottom:4px;color:#1f4e79;letter-spacing:.3px}
 .card .sub{text-align:center;font-size:12px;color:#7b8794;margin-bottom:20px}
@@ -22,7 +22,7 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
 .btn[disabled]{opacity:.55;cursor:not-allowed}
 .err{background:#fdeaea;color:#c0392b;font-size:12.5px;padding:10px 12px;border-radius:6px;margin-bottom:12px;display:none;border-left:4px solid #c0392b}
 .err.show{display:block}
-#appWrap{position:fixed;inset:0;display:none}
+#appWrap{position:fixed;inset:0;display:none;background:#eef2f7}
 #appWrap.show{display:block}
 #gasFrame{width:100%;height:100%;border:0;display:block;background:#eef2f7}
 #busyOverlay{position:fixed;inset:0;background:rgba(15,25,40,.55);display:none;align-items:center;justify-content:center;z-index:9998}
@@ -55,7 +55,7 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
 </div>
 
 <div id="appWrap">
-  <iframe id="gasFrame" allow="geolocation; camera; microphone"></iframe>
+  <iframe id="gasFrame" name="gasBridgeFrame" allow="geolocation; camera; microphone"></iframe>
 </div>
 
 <div id="busyOverlay"><div id="busyBox"><div class="spin"></div><div class="txt">Memproses...</div></div></div>
@@ -92,7 +92,7 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
 
   var _pendingLogin = false;
   var _currentToken = null;
-  var _pendingTokenForIframe = null;   // v63f: token yg nunggu iframe ready
+  var _pendingTokenForIframe = null;
   var _iframeReady = false;
 
   function showBusy(txt){ busyTxt.textContent = txt || 'Memproses...'; busyOverlay.classList.add('show'); }
@@ -133,39 +133,30 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
     } catch(e){ return Promise.resolve(null); }
   }
 
-  // v63f: Kirim token ke GAS iframe — pakai relay pattern
-  function sendTokenToIframe(token, user){
-    var msg = { type: 'gas-login-result', ok: true, data: { token: token, user: user } };
-    // Jika iframe sudah konfirmasi ready, kirim sekarang
-    if(_iframeReady){
-      try { gasFrame.contentWindow.postMessage(msg, '*'); } catch(e){}
-    }
-    // Simpan juga untuk dikirim saat iframe ready
-    _pendingTokenForIframe = msg;
-  }
-
   function openApp(token, user){
     loginWrap.style.display = 'none';
     appWrap.classList.add('show');
     _currentToken = token;
     _iframeReady = false;
 
-    var needLoad = !gasFrame.src || gasFrame.src === 'about:blank' || gasFrame.src === window.location.href;
+    var needLoad = !gasFrame.src || gasFrame.src === 'about:blank';
+    _pendingTokenForIframe = { type: 'gas-login-result', ok: true, data: { token: token, user: user } };
 
     if(needLoad){
-      // Jangan set onload — kita pakai relay pattern via gas-ready message
-      _pendingTokenForIframe = { type: 'gas-login-result', ok: true, data: { token: token, user: user } };
       gasFrame.src = GAS_URL + '?bridge=1';
     } else {
-      sendTokenToIframe(token, user);
+      // Iframe sudah dimuat sebelumnya (misal refresh) — langsung coba kirim
+      try {
+        var win = gasFrame.contentWindow;
+        if(win) win.postMessage(_pendingTokenForIframe, '*');
+      } catch(e){}
     }
   }
 
   function backToLogin(errMsg){
     appWrap.classList.remove('show');
     loginWrap.style.display = '';
-    gasFrame.removeAttribute('src');
-    gasFrame.src = 'about:blank';
+    try { gasFrame.src = 'about:blank'; } catch(e){}
     _currentToken = null;
     _iframeReady = false;
     _pendingTokenForIframe = null;
@@ -175,16 +166,25 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
     btnLogin.disabled = false;
   }
 
-  // ===== Terima pesan dari GAS (login result / logout / ready) =====
+  // ===== Relay Pattern: terima pesan dari GAS iframe =====
   window.addEventListener('message', function(ev){
     var msg = ev.data;
     if(!msg || typeof msg !== 'object') return;
 
-    // v63f: GAS iframe siap — kirim token yg tertunda
+    console.log('[Bridge] received:', msg.type, msg);
+
+    // GAS iframe siap — kirim token yang tertunda
     if(msg.type === 'gas-ready' && msg.source === 'gas-bridge'){
       _iframeReady = true;
       if(_pendingTokenForIframe){
-        try { ev.source.postMessage(_pendingTokenForIframe, '*'); } catch(e){}
+        try {
+          if(ev.source && ev.source.postMessage){
+            ev.source.postMessage(_pendingTokenForIframe, '*');
+            console.log('[Bridge] token sent via event.source');
+          } else {
+            try { gasFrame.contentWindow.postMessage(_pendingTokenForIframe, '*'); } catch(e){}
+          }
+        } catch(e){ console.error('[Bridge] send token failed:', e); }
       }
       return;
     }
@@ -195,6 +195,7 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
       if(msg.ok && msg.data && msg.data.token && msg.data.user){
         var t = msg.data.token;
         var u = msg.data.user;
+        console.log('[Bridge] login success, opening app');
         saveSession(t, u);
         trySavePassword(inpKode.value.trim(), inpPass.value);
         inpPass.value = '';
@@ -209,7 +210,7 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
       return;
     }
 
-    if(msg.type === 'gas-login-success'){ return; }
+    if(msg.type === 'gas-login-success'){ console.log('[Bridge] gas acknowledged login'); return; }
 
     if(msg.type === 'gas-logout' || msg.type === 'gas-session-expired'){
       backToLogin('Sesi berakhir. Silakan login kembali.');
@@ -262,11 +263,12 @@ input:focus{outline:none;border-color:#1f4e79;box-shadow:0 0 0 3px rgba(31,78,12
   (function(){
     var sess = loadSession();
     if(sess){
+      console.log('[Bridge] autologin from localStorage');
       showBusy('Memuat aplikasi...');
       setTimeout(function(){
         hideBusy();
         openApp(sess.token, sess.user);
-      }, 400);
+      }, 300);
     }
   })();
 
